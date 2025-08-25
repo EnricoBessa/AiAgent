@@ -17,7 +17,7 @@ def await_api(process):
         try:
             r = requests.get("http://localhost:11434/api/tags", timeout=1)
             if r.status_code == 200:
-                print("✅ Ollama está pronto para uso")
+                print("Ollama está pronto para uso")
                 return process
         except requests.exceptions.RequestException:
             pass
@@ -27,7 +27,7 @@ def await_api(process):
 def main():
     ollama_process = start_ollama()
 
-    print("Welcome :)")
+    print("=========== Bem vindo ao Assistente Bessa (reposta com max de 50 caracteres) ===========")
 
     try:
         while True:
@@ -35,10 +35,10 @@ def main():
             if user_input.lower() == "quit":
                 break
 
-            print("\nAssistant (stream): ", end="")
+            print("\nAssistant: ", end="")
 
             for chunk in ollama.chat(
-                model="moondream",
+                model="mistral",
                 messages=[{"role": "user", "content": user_input}],
                 stream=True,
                 options={"num_predict": 50}
