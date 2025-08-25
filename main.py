@@ -1,37 +1,54 @@
-from ollama import Ollama
-from langchain.schema import HumanMessage
-from langgraph.prebuilt import create_react_agent
-from dotenv import load_dotenv
+import subprocess
+import time
+import requests
+import ollama
 
-load_dotenv()
+def start_ollama():
+    process = subprocess.Popen(
+        ["ollama", "serve"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    print("Servidor Ollama inicializado....")
+    return await_api(process)
+
+def await_api(process):
+    for _ in range(20):
+        try:
+            r = requests.get("http://localhost:11434/api/tags", timeout=1)
+            if r.status_code == 200:
+                print("✅ Ollama está pronto para uso")
+                return process
+        except requests.exceptions.RequestException:
+            pass
+        time.sleep(0.5)
+    raise RuntimeError("Não foi possível conectar ao Ollama. Verifique a instalação.")
 
 def main():
-    model = Ollama(model="llama2")
-
-    tools = []
-    agent_executor = create_react_agent(model, tools)
+    ollama_process = start_ollama()
 
     print("Welcome :)")
 
-    while True:
-        user_input = input("\nYou: ").strip()
-        if user_input.lower() == "quit":
-            break
+    try:
+        while True:
+            user_input = input("\nYou: ").strip()
+            if user_input.lower() == "quit":
+                break
 
-        response = agent_executor.run([HumanMessage(content=user_input)])
-        print("\nAssistant:", response)
+            print("\nAssistant (stream): ", end="")
 
-        for chunk in model.stream_chat([{"role": "user", "content": user_input}]):
-            print(chunk, end="")
+            for chunk in ollama.chat(
+                model="moondream",
+                messages=[{"role": "user", "content": user_input}],
+                stream=True,
+                options={"num_predict": 50}
+            ):
+                print(chunk["message"]["content"], end="", flush=True)
 
-        # print("\n Assistant: ", end="")
-
-        # for chunk in agent_executor.stream({"messages": [HumanMessage(content = user_input)]}):
-        #     if "agent" in chunk and "messages" in chunk["agent"]:
-        #         for message in chunk["agent"]["message"]:
-        #             print(message.content, end="")
-
-        # print()
+            print()
+    finally:
+        ollama_process.terminate()
+        print("\nFinalizando Ollama...")
 
 if __name__ == "__main__":
     main()
